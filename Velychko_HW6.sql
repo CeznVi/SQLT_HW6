@@ -108,35 +108,148 @@ HAVING
 		AVG([S].[Rating]) >		(SELECT 
 									MIN([TEMP].[Середній рейтинг]) AS 'Мінімальний рейтинг груп 5 курсу'
 								FROM
-									(SELECT [G].[Name] AS 'Назва групи', AVG([S].[Rating]) AS 'Середній рейтинг'
-									FROM [GroupsStudents] AS [GS] JOIN [Students] AS [S] ON [GS].[StudentId] = [S].[Id]
-									INNER JOIN [Groups] AS [G] ON [G].[Id] = [GS].[GroupId]
-									 WHERE [G].[Year] = 5
-									 GROUP BY [G].[Name]) AS [TEMP])
+									(SELECT 
+										[G].[Name] AS 'Назва групи', AVG([S].[Rating]) AS 'Середній рейтинг'
+									FROM 
+										[GroupsStudents] AS [GS] JOIN [Students] AS [S] ON [GS].[StudentId] = [S].[Id]
+										INNER JOIN [Groups] AS [G] ON [G].[Id] = [GS].[GroupId]
+									 WHERE 
+										[G].[Year] = 5
+									 GROUP BY 
+										[G].[Name]) AS [TEMP])
+ORDER BY 'Середній рейтинг' DESC
 		   
 --************************************************************************************************
---7. Вивести назви факультетів, сумарний фонд фінансуван-
---ня кафедр яких більший за сумарний фонд фінансування
---кафедр факультету “Computer Science”.
+--7. Вивести назви факультетів, сумарний фонд фінансування кафедр 
+--яких більший за сумарний фонд фінансування кафедр факультету “Computer Science”.
 
+--! запит змінено під існуючу базу (“Computer Science” = “МКА”) !--
 
+SELECT
+	[F].[Name] AS 'Назва факультетів',
+	SUM([D].[Financing]) AS 'Сумарний фонд фінансування кафедр'
+FROM
+	[Faculties] AS [F] JOIN [Departments] AS [D] ON [F].[Id] = [D].[FacultyId]
+GROUP BY
+	[F].[Name]
+HAVING 
+	SUM([D].[Financing]) > (SELECT 
+								SUM([D].[Financing])
+							FROM
+								[Faculties] AS [F] JOIN [Departments] AS [D] ON [F].[Id] = [D].[FacultyId]
+							WHERE 
+								[F].[Name] = 'МКА')
 
 --************************************************************************************************
---8. Вивести назви дисциплін та повні імена викладачів, які
---читають найбільшу кількість лекцій з них.
+--8. Вивести назви дисциплін та повні імена викладачів, які читають найбільшу кількість лекцій з них.
 
+--SELECT
+--	[S].[Name] AS 'Назва предмету',
+--	[T].[Name] + ' ' + [T].[Surname] AS 'Викладач',
+--	COUNT([S].[Name]) AS 'Кількість предметів'
+--FROM
+--	[Teachers] AS [T] JOIN [Lectures] AS [L] ON [T].[Id] = [L].[TeacherId]
+--	INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
+--GROUP BY 
+--	[T].[Name] + ' ' + [T].[Surname], [S].[Name]
+
+SELECT
+	[TEMP].[Н] AS 'Назва предмету',
+	[TEMP].[В] AS 'Викладач',
+	[TEMP].[К] AS 'Кількість предметів'
+FROM
+	(SELECT
+		[S].[Name] AS 'Н',
+		[T].[Name] + ' ' + [T].[Surname] AS 'В',
+		COUNT([S].[Name]) AS 'К'
+	FROM
+		[Teachers] AS [T] JOIN [Lectures] AS [L] ON [T].[Id] = [L].[TeacherId]
+		INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
+	GROUP BY 
+		[T].[Name] + ' ' + [T].[Surname], [S].[Name]) AS [TEMP]
+WHERE
+	[TEMP].[К]  = ANY MAX([TEMP].[К])
+
+
+
+
+
+
+
+
+--SELECT
+--	[T].[Name],
+--	[S].[Name], 
+--	COUNT([S].[Name]) AS 'Кількість'
+--FROM
+--	[Teachers] AS [T] JOIN [Lectures] AS [L] ON [T].[Id] = [L].[TeacherId]
+--	INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
+--GROUP BY 
+--	[T].[Name], [S].[Name]
 
 
 --************************************************************************************************
 --9. Вивести назву дисципліни, за якою читається найменше
 --лекцій.
 
-
+SELECT
+	[TEMP].[Назва] AS 'Назва предмету, за яким читається найменше лекцій'
+FROM 
+	(SELECT
+		[S].[Name] AS 'Назва',
+		COUNT([S].[Name]) AS 'Кількість'
+	FROM
+		[Subjects] AS [S] JOIN [Lectures] AS [L] ON [S].[Id] = [L].[SubjectId]
+	GROUP BY
+		[S].[Name]) AS [TEMP]
+WHERE
+	[TEMP].[Кількість] = 	(
+							SELECT
+								MIN([TEMP].[Кількість])
+							FROM
+								(SELECT
+									[S].[Name] AS 'Назва',
+									COUNT([S].[Name]) AS 'Кількість'
+								FROM
+									[Subjects] AS [S] JOIN [Lectures] AS [L] ON [S].[Id] = [L].[SubjectId]
+								GROUP BY
+									[S].[Name]) AS [TEMP])
 
 --************************************************************************************************
 --10. Вивести кількість студентів та дисциплін, що читаються
 --на кафедрі “Software Development”.
 
+--! запит змінено під існуючу базу (“Software Development” = “МКА 5р”) !--
+	
+SELECT
+	[StuCount].[Кількість студентів] AS 'Кількість студентів',
+	[SubjCount].[Кількість предметів] AS 'Кількість предметів'
+FROM
+	(SELECT
+		COUNT([GS].[StudentId]) AS 'Кількість студентів'
+	FROM
+		[Departments] AS [D] INNER JOIN  [Groups] AS [G] ON [G].[DepartmentId] = [D].[Id]
+		INNER JOIN [GroupsStudents] AS [GS] ON [GS].[GroupId] = [G].[Id]
+	WHERE
+		[D].[Name] = 'МКА 5р') AS [StuCount],
+	(SELECT
+		COUNT([TEMP].[предмети]) AS 'Кількість предметів'
+	FROM
+				(SELECT
+					[S].[Name] AS 'предмети'
+				FROM
+					[Departments] AS [D] INNER JOIN  [Groups] AS [G] ON [G].[DepartmentId] = [D].[Id]
+					INNER JOIN [GroupsLectures] AS [GL] ON [GL].[GroupId] = [G].[Id]
+					INNER JOIN [Lectures] AS [L] ON [L].[Id] = [GL].[LectureId]
+					INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
+				WHERE
+					[D].[Name] = 'МКА 5р'
+				GROUP BY
+					[S].[Name]) AS [TEMP]) AS [SubjCount]
 
+
+
+
+		
 
 --************************************************************************************************
