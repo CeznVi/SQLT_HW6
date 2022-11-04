@@ -143,51 +143,38 @@ HAVING
 --************************************************************************************************
 --8. Вивести назви дисциплін та повні імена викладачів, які читають найбільшу кількість лекцій з них.
 
---SELECT
---	[S].[Name] AS 'Назва предмету',
---	[T].[Name] + ' ' + [T].[Surname] AS 'Викладач',
---	COUNT([S].[Name]) AS 'Кількість предметів'
---FROM
---	[Teachers] AS [T] JOIN [Lectures] AS [L] ON [T].[Id] = [L].[TeacherId]
---	INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
---GROUP BY 
---	[T].[Name] + ' ' + [T].[Surname], [S].[Name]
-
 SELECT
-	[TEMP].[Н] AS 'Назва предмету',
-	[TEMP].[В] AS 'Викладач',
-	[TEMP].[К] AS 'Кількість предметів'
+	[S].[Name] AS 'Назва предмету',
+	[T].[Name] + ' ' + [T].[Surname] AS 'Викладач',
+	COUNT([S].[Name]) AS 'Кількість лекцій'
 FROM
-	(SELECT
-		[S].[Name] AS 'Н',
-		[T].[Name] + ' ' + [T].[Surname] AS 'В',
-		COUNT([S].[Name]) AS 'К'
-	FROM
-		[Teachers] AS [T] JOIN [Lectures] AS [L] ON [T].[Id] = [L].[TeacherId]
-		INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
-	GROUP BY 
-		[T].[Name] + ' ' + [T].[Surname], [S].[Name]) AS [TEMP]
-WHERE
-	[TEMP].[К]  = ANY MAX([TEMP].[К])
-
-
-
-
-
-
-
-
---SELECT
---	[T].[Name],
---	[S].[Name], 
---	COUNT([S].[Name]) AS 'Кількість'
---FROM
---	[Teachers] AS [T] JOIN [Lectures] AS [L] ON [T].[Id] = [L].[TeacherId]
---	INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
---GROUP BY 
---	[T].[Name], [S].[Name]
-
-
+	[Teachers] AS [T] JOIN [Lectures] AS [L] ON [T].[Id] = [L].[TeacherId]
+	INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
+	INNER JOIN (SELECT
+					[TEMP].[NAME] AS 'Предмет',
+					MAX([TEMP].[Кількість предметів]) AS 'Макс кількість'
+				FROM
+							(SELECT
+								[S].[Name] AS 'NAME',
+								COUNT([S].[Name]) AS 'Кількість предметів'
+							FROM
+								[Teachers] AS [T] JOIN [Lectures] AS [L] ON [T].[Id] = [L].[TeacherId]
+								INNER JOIN [Subjects] AS [S] ON [S].[Id] = [L].[SubjectId]
+							WHERE
+								[S].[Name] IN (SELECT
+												[S].[Name] AS 'НАЗВА'
+											  FROM
+												[Subjects] AS [S])
+							GROUP BY 
+								[T].[Name] + ' ' + [T].[Surname], [S].[Name]) AS [TEMP]
+						GROUP BY
+							[TEMP].[NAME]) AS [NT] ON [NT].[Предмет] = [S].[Name]
+GROUP BY 
+	[T].[Name] + ' ' + [T].[Surname], [S].[Name], [NT].[Макс кількість]
+HAVING 
+	COUNT([S].[Name]) = [NT].[Макс кількість]
+ORDER BY [S].[Name]
+						
 --************************************************************************************************
 --9. Вивести назву дисципліни, за якою читається найменше
 --лекцій.
@@ -203,8 +190,7 @@ FROM
 	GROUP BY
 		[S].[Name]) AS [TEMP]
 WHERE
-	[TEMP].[Кількість] = 	(
-							SELECT
+	[TEMP].[Кількість] = 	(SELECT
 								MIN([TEMP].[Кількість])
 							FROM
 								(SELECT
@@ -213,7 +199,7 @@ WHERE
 								FROM
 									[Subjects] AS [S] JOIN [Lectures] AS [L] ON [S].[Id] = [L].[SubjectId]
 								GROUP BY
-									[S].[Name]) AS [TEMP])
+									[S].[Name]) AS [TEMP])							
 
 --************************************************************************************************
 --10. Вивести кількість студентів та дисциплін, що читаються
@@ -246,10 +232,5 @@ FROM
 					[D].[Name] = 'МКА 5р'
 				GROUP BY
 					[S].[Name]) AS [TEMP]) AS [SubjCount]
-
-
-
-
-		
 
 --************************************************************************************************
